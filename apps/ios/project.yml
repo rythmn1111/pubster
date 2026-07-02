@@ -1,0 +1,56 @@
+# XcodeGen spec for the Pubster consumer iOS app.
+# The generated `Pubster.xcodeproj` is git-ignored (see repo .gitignore); only
+# this spec + the Swift/resource sources are committed. Regenerate with:
+#   cd apps/ios && xcodegen generate
+name: Pubster
+options:
+  bundleIdPrefix: com.pubster
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    # Dev API base URL — configurable here (or via xcconfig / CI). Substituted
+    # into Info.plist as $(API_BASE_URL) and read by AppConfig at runtime.
+    API_BASE_URL: "http://localhost:4000/api/v1"
+    # Simulator builds don't require signing.
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGNING_ALLOWED: "NO"
+
+targets:
+  Pubster:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Pubster
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pubster.app
+        PRODUCT_NAME: Pubster
+        INFOPLIST_FILE: Pubster/Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_PREVIEWS: "YES"
+        SWIFT_EMIT_LOC_STRINGS: "YES"
+
+schemes:
+  Pubster:
+    build:
+      targets:
+        Pubster: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    archive:
+      config: Release

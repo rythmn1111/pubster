@@ -35,11 +35,11 @@ VPS directly** — commit → push → pull on server → deploy with `.env` →
 - [ ] Table management (add/remove/edit)
 
 **iOS (SwiftUI)**
-- [ ] XcodeGen project + app skeleton, networking layer, Keychain token storage
-- [ ] Onboarding: phone → OTP (`000000`) → name → location permission
-- [ ] Discover: nearest pubs (map + list)
-- [ ] Pub detail: info + menu + events
-- [ ] Reserve: time frame → party count → availability → confirm
+- [x] XcodeGen project + app skeleton, networking layer, Keychain token storage
+- [x] Onboarding: phone → OTP (`000000`) → name → location permission
+- [x] Discover: nearest pubs (map + list)
+- [x] Pub detail: info + menu + events
+- [x] Reserve: time frame → party count → availability → confirm
 
 ## Phase 2 — Commerce
 - [ ] Events: manager CRUD, capacity cap, cover charge
