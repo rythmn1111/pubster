@@ -1,0 +1,26 @@
+{
+  "name": "@pubster/dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pubster general dashboard — Next.js web app (staff/manager), role-gated.",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pubster/shared": "workspace:*",
+    "next": "^16.2.10",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^6.0.3"
+  }
+}
