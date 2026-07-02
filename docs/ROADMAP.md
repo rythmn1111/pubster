@@ -20,8 +20,13 @@ VPS directly** — commit → push → pull on server → deploy with `.env` →
 - [x] Auth: consumer phone + dummy OTP (real DB user), staff/manager email+password, JWT + refresh
 - [x] Pubs: `GET nearest` (PostGIS), `GET detail`
 - [x] Menu: `GET` categories + items for a pub
-- [ ] Tables: CRUD (staff/manager) — inventory by size
-- [ ] Reservations: availability (time frame + party count → size-class availability), create, list mine, cancel
+- [x] Tables: CRUD (staff/manager) — inventory by size
+- [x] Reservations: availability (time frame + party count → size-class availability), create, list mine, cancel
+  - Smallest-fit from the size-class pool; race-safe booking via a per-pub `pg_advisory_xact_lock`
+    inside the create transaction; owner cancel + staff status transitions (seated/completed/no_show).
+  - **Timezone assumption (MVP):** `openingHours` wall-clock times and the `date` query param are
+    interpreted as **UTC** (weekday via `getUTCDay`), applied identically to slot generation and
+    reservation overlap checks. Per-pub IANA timezones are deferred to a later phase.
 
 **General Dashboard (Next.js)**
 - [ ] App scaffold + role-based auth (staff/manager)

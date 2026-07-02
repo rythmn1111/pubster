@@ -181,3 +181,94 @@ export interface EventDTO {
   /** Per-person cover charge, integer cents. */
   coverChargeCents: number;
 }
+
+// ---------------------------------------------------------------------------
+// Tables — physical table inventory (see docs/DATABASE.md §RestaurantTable).
+// Managed by staff/manager; reservations consume a size CLASS from the pool.
+// ---------------------------------------------------------------------------
+
+/** A physical table row — `GET /api/v1/pubs/:id/tables`. */
+export interface TableDTO {
+  id: string;
+  seats: number;
+  label: string | null;
+  isActive: boolean;
+}
+
+/**
+ * `POST /api/v1/pubs/:id/tables` body — create `quantity` (default 1) identical
+ * tables of `seats` seats.
+ */
+export interface CreateTableRequest {
+  seats: number;
+  label?: string;
+  quantity?: number;
+}
+
+/** `PATCH /api/v1/tables/:id` body — partial update of a single table. */
+export interface UpdateTableRequest {
+  seats?: number;
+  label?: string | null;
+  isActive?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Reservations & availability (see docs/DATABASE.md §Availability logic).
+// Timestamps are ISO-8601 strings. Opening-hours wall-clock times are treated
+// as UTC for MVP (a single fixed assumption — see the API + ROADMAP notes).
+// ---------------------------------------------------------------------------
+
+/** Reservation lifecycle — mirrors Prisma enum `ReservationStatus`. */
+export type ReservationStatus =
+  'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled' | 'no_show';
+
+/**
+ * One candidate slot in `GET /api/v1/pubs/:id/availability`. `seats` is the
+ * table size class that a booking of the requested party would consume when
+ * `available` is true, and `null` when the slot cannot be booked.
+ */
+export interface AvailabilitySlotDTO {
+  /** ISO-8601 UTC timestamp — slot start. */
+  startTime: string;
+  /** ISO-8601 UTC timestamp — slot end (start + `pub.slotMinutes`). */
+  endTime: string;
+  available: boolean;
+  /** The size class that would be used when available, else `null`. */
+  seats: number | null;
+}
+
+/**
+ * `POST /api/v1/reservations` body. A plain table reservation is FREE; passing
+ * `eventId` links an overlapping event (cover charging is Phase 2).
+ */
+export interface CreateReservationRequest {
+  pubId: string;
+  /** ISO-8601 timestamp of the slot start. */
+  startTime: string;
+  partyCount: number;
+  eventId?: string;
+}
+
+/** `POST /api/v1/reservations/:id/status` body (staff/manager). */
+export interface UpdateReservationStatusRequest {
+  status: 'seated' | 'completed' | 'no_show';
+}
+
+/**
+ * A reservation as returned by the reservation endpoints. `pubName` is included
+ * for consumer/staff listings; timestamps are ISO-8601 UTC strings.
+ */
+export interface ReservationDTO {
+  id: string;
+  pubId: string;
+  pubName: string | null;
+  userId: string;
+  partyCount: number;
+  /** Size class consumed (smallest available >= partyCount). */
+  seats: number;
+  startTime: string;
+  endTime: string;
+  status: ReservationStatus;
+  eventId: string | null;
+  createdAt: string;
+}
