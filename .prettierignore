@@ -6,6 +6,7 @@ coverage
 pnpm-lock.yaml
 services/api/src/generated
 apps/ios
+next-env.d.ts
 
 # Hand-authored source-of-truth docs (kept verbatim, not auto-formatted)
 CLAUDE.md

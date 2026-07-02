@@ -29,10 +29,10 @@ VPS directly** — commit → push → pull on server → deploy with `.env` →
     reservation overlap checks. Per-pub IANA timezones are deferred to a later phase.
 
 **General Dashboard (Next.js)**
-- [ ] App scaffold + role-based auth (staff/manager)
-- [ ] Staff login (email/password)
-- [ ] Today's reservations view + occupancy
-- [ ] Table management (add/remove/edit)
+- [x] App scaffold + role-based auth (staff/manager)
+- [x] Staff login (email/password)
+- [x] Today's reservations view + occupancy
+- [x] Table management (add/remove/edit)
 
 **iOS (SwiftUI)**
 - [ ] XcodeGen project + app skeleton, networking layer, Keychain token storage

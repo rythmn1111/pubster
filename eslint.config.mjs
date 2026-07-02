@@ -13,6 +13,7 @@ export default tseslint.config(
       '**/coverage/**',
       'services/api/src/generated/**',
       'apps/ios/**',
+      '**/next-env.d.ts',
     ],
   },
   js.configs.recommended,
