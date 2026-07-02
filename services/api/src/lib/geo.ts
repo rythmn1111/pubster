@@ -1,15 +1,17 @@
 import { Prisma } from '@prisma/client';
-import type { NearestPubDTO } from '@pubster/shared';
+import type { PubSummaryDTO } from '@pubster/shared';
 import { prisma } from '../db/prisma.js';
 
 /**
- * Nearest-pubs geo query (skeleton — see docs/DATABASE.md §"Nearest-pubs query").
+ * Nearest-pubs geo query (docs/DATABASE.md §"Nearest-pubs query").
  *
- * Prisma can't express PostGIS geography operators, so this uses a raw query.
- * It depends on the `Pub` table and its `location geography(Point,4326)` column
- * (kept in sync with lat/lng) plus a GiST index — all added when the full schema
- * and its raw PostGIS migration land. Until then this compiles but will fail at
- * runtime; it documents the intended query signature.
+ * Prisma can't express PostGIS geography operators, so this uses a raw query
+ * against `Pub` and its `location geography(Point,4326)` column (kept in sync
+ * with lat/lng; a GiST index makes `ST_DWithin` fast). The query point is built
+ * with `ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography` (note the lng,lat
+ * order) so `ST_DWithin` / `ST_Distance` operate in metres. Results are ordered
+ * by ascending distance and capped at `limit`; the raw `location` blob is never
+ * selected. `distanceMeters` is rounded to whole metres for the wire response.
  */
 export interface NearestPubsParams {
   lat: number;
@@ -18,17 +20,25 @@ export interface NearestPubsParams {
   limit: number;
 }
 
-export function findNearestPubs(params: NearestPubsParams): Promise<NearestPubDTO[]> {
+export async function findNearestPubs(params: NearestPubsParams): Promise<PubSummaryDTO[]> {
   const { lat, lng, radiusMeters, limit } = params;
-  return prisma.$queryRaw<NearestPubDTO[]>(Prisma.sql`
+  const rows = await prisma.$queryRaw<PubSummaryDTO[]>(Prisma.sql`
     SELECT id,
            name,
+           description,
            latitude,
            longitude,
-           ST_Distance(location, ST_MakePoint(${lng}, ${lat})::geography) AS "distanceMeters"
+           "addressLine",
+           city,
+           region,
+           "postalCode",
+           photos,
+           ST_Distance(location, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography) AS "distanceMeters"
     FROM "Pub"
-    WHERE ST_DWithin(location, ST_MakePoint(${lng}, ${lat})::geography, ${radiusMeters})
+    WHERE location IS NOT NULL
+      AND ST_DWithin(location, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography, ${radiusMeters})
     ORDER BY "distanceMeters" ASC
     LIMIT ${limit};
   `);
+  return rows.map((row) => ({ ...row, distanceMeters: Math.round(row.distanceMeters) }));
 }

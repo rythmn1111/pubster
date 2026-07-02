@@ -18,8 +18,8 @@ VPS directly** — commit → push → pull on server → deploy with `.env` →
 - [x] Prisma schema for all core entities (see `DATABASE.md`) + initial migration
 - [x] Seed script: 3–5 pubs (coordinates), table inventories, a menu each, one upcoming event
 - [x] Auth: consumer phone + dummy OTP (real DB user), staff/manager email+password, JWT + refresh
-- [ ] Pubs: `GET nearest` (PostGIS), `GET detail`
-- [ ] Menu: `GET` categories + items for a pub
+- [x] Pubs: `GET nearest` (PostGIS), `GET detail`
+- [x] Menu: `GET` categories + items for a pub
 - [ ] Tables: CRUD (staff/manager) — inventory by size
 - [ ] Reservations: availability (time frame + party count → size-class availability), create, list mine, cancel
 

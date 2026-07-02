@@ -98,11 +98,86 @@ export interface OkResponse {
   ok: true;
 }
 
-/** A pub as returned by `GET /api/v1/pubs/nearest`, ordered by distance. */
-export interface NearestPubDTO {
+// ---------------------------------------------------------------------------
+// Pubs / Menu / Events contracts (see docs/BACKEND.md §API surface,
+// docs/DATABASE.md §Entities). These describe the JSON wire shapes; timestamps
+// are ISO-8601 UTC strings and money is integer cents.
+// ---------------------------------------------------------------------------
+
+/**
+ * Opening hours keyed by weekday (`mon`..`sun`); each value is a list of
+ * `[open, close]` `"HH:MM"` ranges — e.g. `{ "fri": [["12:00","01:00"]] }`.
+ */
+export type OpeningHours = Record<string, string[][]>;
+
+/**
+ * A pub in the discover list: core fields plus `distanceMeters`. Returned by
+ * `GET /api/v1/pubs/nearest`, ordered by ascending distance. The raw PostGIS
+ * `location` blob is never exposed.
+ */
+export interface PubSummaryDTO {
   id: string;
   name: string;
+  description: string | null;
   latitude: number;
   longitude: number;
+  addressLine: string | null;
+  city: string | null;
+  region: string | null;
+  postalCode: string | null;
+  photos: string[];
+  /** Distance from the query point in metres (rounded to the nearest metre). */
   distanceMeters: number;
+}
+
+/** Full pub detail — `GET /api/v1/pubs/:id`. */
+export interface PubDetailDTO {
+  id: string;
+  name: string;
+  description: string | null;
+  latitude: number;
+  longitude: number;
+  addressLine: string | null;
+  city: string | null;
+  region: string | null;
+  postalCode: string | null;
+  phone: string | null;
+  photos: string[];
+  openingHours: OpeningHours | null;
+  slotMinutes: number;
+}
+
+/** A single menu item within a category — `GET /api/v1/pubs/:id/menu`. */
+export interface MenuItemDTO {
+  id: string;
+  categoryId: string;
+  name: string;
+  description: string | null;
+  priceCents: number;
+  imageUrl: string | null;
+  isAvailable: boolean;
+  sortOrder: number;
+}
+
+/** A menu category with its items, both ordered by `sortOrder` ascending. */
+export interface MenuCategoryDTO {
+  id: string;
+  name: string;
+  sortOrder: number;
+  items: MenuItemDTO[];
+}
+
+/** An upcoming pub event — `GET /api/v1/pubs/:id/events`. */
+export interface EventDTO {
+  id: string;
+  name: string;
+  description: string | null;
+  /** ISO-8601 UTC timestamp. */
+  startTime: string;
+  /** ISO-8601 UTC timestamp. */
+  endTime: string;
+  /** Max attendees (sum of joined reservations' party counts). */
+  capacity: number;
+  /** Per-person cover charge, integer cents. */
+  coverChargeCents: number;
 }
