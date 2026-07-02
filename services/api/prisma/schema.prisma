@@ -1,0 +1,23 @@
+// Pubster — Prisma schema.
+//
+// PHASE-1 SKELETON: datasource + generator + a single placeholder model so
+// `prisma validate` and `prisma generate` succeed. The full data model
+// (User, Pub, RestaurantTable, Reservation, Event, Menu*, Order*, Payment,
+// RefreshToken) is defined in docs/DATABASE.md and lands in a follow-up task,
+// together with the PostGIS `location` column and GiST index (raw migration).
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// Placeholder so the schema validates before the real model lands.
+/// Remove when the Phase-1 entities are added.
+model HealthCheck {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+}

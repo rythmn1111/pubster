@@ -1,0 +1,13 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+pnpm-lock.yaml
+services/api/src/generated
+apps/ios
+
+# Hand-authored source-of-truth docs (kept verbatim, not auto-formatted)
+CLAUDE.md
+README.md
+docs/

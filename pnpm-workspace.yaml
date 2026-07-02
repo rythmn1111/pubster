@@ -1,0 +1,15 @@
+packages:
+  - 'apps/*'
+  - 'services/*'
+  - 'packages/*'
+
+# pnpm 10+/11 blocks lifecycle (build) scripts by default. Explicitly allow the
+# native/codegen packages we trust to run their install/postinstall scripts.
+# (In pnpm 11 this is the `allowBuilds` map — the old `onlyBuiltDependencies`
+# list in package.json is no longer read.)
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
+  esbuild: true
+  argon2: true
