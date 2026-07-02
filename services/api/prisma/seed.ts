@@ -55,7 +55,8 @@ interface PubSeed {
 const PUBS: PubSeed[] = [
   {
     name: 'The Bell in Hand Tavern',
-    description: "America's oldest tavern (est. 1795) — hearty pub fare and live music near Faneuil Hall.",
+    description:
+      "America's oldest tavern (est. 1795) — hearty pub fare and live music near Faneuil Hall.",
     latitude: 42.3601,
     longitude: -71.057,
     addressLine: '45 Union St',
@@ -68,18 +69,42 @@ const PUBS: PubSeed[] = [
         category: 'Starters',
         sortOrder: 0,
         items: [
-          { name: 'Loaded Nachos', description: 'Cheddar, jalapeños, pico, sour cream.', priceCents: 1200 },
-          { name: 'Buffalo Wings', description: 'Eight wings, blue cheese, celery.', priceCents: 1400 },
-          { name: 'Soft Pretzel', description: 'Warm pretzel with beer-cheese dip.', priceCents: 900 },
+          {
+            name: 'Loaded Nachos',
+            description: 'Cheddar, jalapeños, pico, sour cream.',
+            priceCents: 1200,
+          },
+          {
+            name: 'Buffalo Wings',
+            description: 'Eight wings, blue cheese, celery.',
+            priceCents: 1400,
+          },
+          {
+            name: 'Soft Pretzel',
+            description: 'Warm pretzel with beer-cheese dip.',
+            priceCents: 900,
+          },
         ],
       },
       {
         category: 'Mains',
         sortOrder: 1,
         items: [
-          { name: 'Classic Burger', description: 'Half-pound patty, cheddar, fries.', priceCents: 1650 },
-          { name: 'Fish & Chips', description: 'Beer-battered cod, tartar, slaw.', priceCents: 1850 },
-          { name: 'Shepherd’s Pie', description: 'Lamb, root veg, mashed potato crust.', priceCents: 1750 },
+          {
+            name: 'Classic Burger',
+            description: 'Half-pound patty, cheddar, fries.',
+            priceCents: 1650,
+          },
+          {
+            name: 'Fish & Chips',
+            description: 'Beer-battered cod, tartar, slaw.',
+            priceCents: 1850,
+          },
+          {
+            name: 'Shepherd’s Pie',
+            description: 'Lamb, root veg, mashed potato crust.',
+            priceCents: 1750,
+          },
         ],
       },
       {
@@ -114,7 +139,11 @@ const PUBS: PubSeed[] = [
         category: 'Small Plates',
         sortOrder: 0,
         items: [
-          { name: 'Clam Chowder', description: 'New England style, oyster crackers.', priceCents: 1100 },
+          {
+            name: 'Clam Chowder',
+            description: 'New England style, oyster crackers.',
+            priceCents: 1100,
+          },
           { name: 'Mozzarella Sticks', description: 'Marinara dipping sauce.', priceCents: 1000 },
         ],
       },
@@ -137,7 +166,8 @@ const PUBS: PubSeed[] = [
   },
   {
     name: 'The Black Rose',
-    description: 'Irish pub in the Financial District with traditional music sessions and Guinness on tap.',
+    description:
+      'Irish pub in the Financial District with traditional music sessions and Guinness on tap.',
     latitude: 42.3592,
     longitude: -71.0537,
     addressLine: '160 State St',
@@ -150,7 +180,11 @@ const PUBS: PubSeed[] = [
         category: 'Starters',
         sortOrder: 0,
         items: [
-          { name: 'Potato Boxty', description: 'Irish potato pancakes, chive cream.', priceCents: 1050 },
+          {
+            name: 'Potato Boxty',
+            description: 'Irish potato pancakes, chive cream.',
+            priceCents: 1050,
+          },
           { name: 'Scotch Egg', description: 'Sausage-wrapped egg, mustard.', priceCents: 1150 },
         ],
       },
@@ -158,9 +192,17 @@ const PUBS: PubSeed[] = [
         category: 'Mains',
         sortOrder: 1,
         items: [
-          { name: 'Guinness Beef Stew', description: 'Slow-braised beef, root veg, soda bread.', priceCents: 1900 },
+          {
+            name: 'Guinness Beef Stew',
+            description: 'Slow-braised beef, root veg, soda bread.',
+            priceCents: 1900,
+          },
           { name: 'Bangers & Mash', description: 'Irish sausage, onion gravy.', priceCents: 1650 },
-          { name: 'Corned Beef Sandwich', description: 'Rye, swiss, mustard, fries.', priceCents: 1550 },
+          {
+            name: 'Corned Beef Sandwich',
+            description: 'Rye, swiss, mustard, fries.',
+            priceCents: 1550,
+          },
         ],
       },
       {
@@ -204,7 +246,11 @@ const PUBS: PubSeed[] = [
         sortOrder: 1,
         items: [
           { name: 'Fenway Burger', description: 'Double patty, special sauce.', priceCents: 1800 },
-          { name: 'Chicken Sandwich', description: 'Crispy chicken, slaw, pickles.', priceCents: 1550 },
+          {
+            name: 'Chicken Sandwich',
+            description: 'Crispy chicken, slaw, pickles.',
+            priceCents: 1550,
+          },
         ],
       },
     ],
@@ -352,7 +398,9 @@ async function main(): Promise<void> {
     prisma.user.count(),
   ]);
   console.log('Seed complete:');
-  console.log(`  pubs=${pubs} tables=${tables} categories=${categories} menuItems=${items} events=${events} users=${users}`);
+  console.log(
+    `  pubs=${pubs} tables=${tables} categories=${categories} menuItems=${items} events=${events} users=${users}`,
+  );
   console.log(`  manager: ${MANAGER_EMAIL} / ${MANAGER_PASSWORD}`);
   console.log(`  staff:   ${STAFF_EMAIL} / ${STAFF_PASSWORD}`);
 }

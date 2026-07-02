@@ -17,7 +17,7 @@ VPS directly** — commit → push → pull on server → deploy with `.env` →
 **Backend**
 - [x] Prisma schema for all core entities (see `DATABASE.md`) + initial migration
 - [x] Seed script: 3–5 pubs (coordinates), table inventories, a menu each, one upcoming event
-- [ ] Auth: consumer phone + dummy OTP (real DB user), staff/manager email+password, JWT + refresh
+- [x] Auth: consumer phone + dummy OTP (real DB user), staff/manager email+password, JWT + refresh
 - [ ] Pubs: `GET nearest` (PostGIS), `GET detail`
 - [ ] Menu: `GET` categories + items for a pub
 - [ ] Tables: CRUD (staff/manager) — inventory by size

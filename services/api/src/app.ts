@@ -6,7 +6,7 @@ import {
 } from 'fastify-type-provider-zod';
 import type { HealthResponse } from '@pubster/shared';
 
-import { isProduction } from './config/env.js';
+import { isProduction, isTest } from './config/env.js';
 import errorHandlerPlugin from './plugins/errorHandler.js';
 import corsPlugin from './plugins/cors.js';
 import swaggerPlugin from './plugins/swagger.js';
@@ -24,9 +24,9 @@ import menuRoutes from './modules/menu/routes.js';
  */
 export async function buildApp() {
   const app = Fastify({
-    logger: {
-      level: isProduction ? 'info' : 'debug',
-    },
+    // Silent under test (keeps `fastify.inject()` output clean); structured
+    // pino logging otherwise (captured by PM2 in production).
+    logger: isTest ? false : { level: isProduction ? 'info' : 'debug' },
   }).withTypeProvider<ZodTypeProvider>();
 
   // Validate/serialize route schemas with zod.

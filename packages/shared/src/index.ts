@@ -36,19 +36,66 @@ export interface HealthResponse {
 }
 
 /** Access + refresh token pair returned by auth endpoints. */
-export interface AuthTokens {
+export interface TokenPair {
   accessToken: string;
   refreshToken: string;
 }
+
+/** @deprecated Kept as an alias of {@link TokenPair} for older callers. */
+export type AuthTokens = TokenPair;
 
 /** Minimal public view of an authenticated user. */
 export interface UserDTO {
   id: string;
   role: UserRole;
-  name: string;
+  /** Consumers created via OTP may not have supplied a name yet. */
+  name: string | null;
   phone?: string | null;
   email?: string | null;
   pubId?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Auth request / response contracts (see docs/BACKEND.md §Auth design).
+// ---------------------------------------------------------------------------
+
+/** `POST /api/v1/auth/otp/request` body. */
+export interface OtpRequestRequest {
+  phone: string;
+}
+
+/** `POST /api/v1/auth/otp/verify` body (consumer dummy-OTP login). */
+export interface OtpVerifyRequest {
+  phone: string;
+  code: string;
+  /** First-time consumers may supply their name here. */
+  name?: string;
+}
+
+/** `POST /api/v1/auth/login` body (staff/manager/super-admin email+password). */
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+/** `POST /api/v1/auth/refresh` body. */
+export interface RefreshRequest {
+  refreshToken: string;
+}
+
+/** `POST /api/v1/auth/logout` body. */
+export interface LogoutRequest {
+  refreshToken: string;
+}
+
+/** Token pair plus the authenticated user (OTP verify + login responses). */
+export interface AuthResponse extends TokenPair {
+  user: UserDTO;
+}
+
+/** Simple acknowledgement envelope (e.g. `POST /auth/otp/request`, `/auth/logout`). */
+export interface OkResponse {
+  ok: true;
 }
 
 /** A pub as returned by `GET /api/v1/pubs/nearest`, ordered by distance. */

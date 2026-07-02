@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 // Importing this module also triggers boot-time env validation.
-import { isProduction } from '../config/env.js';
+import { isProduction, isTest } from '../config/env.js';
 
 /**
  * PrismaClient singleton.
@@ -15,7 +15,8 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma: PrismaClient =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: isProduction ? ['warn', 'error'] : ['query', 'warn', 'error'],
+    // Verbose query logging only in interactive dev; quiet in prod and tests.
+    log: isProduction || isTest ? ['warn', 'error'] : ['query', 'warn', 'error'],
   });
 
 if (!isProduction) {
