@@ -9,14 +9,14 @@ VPS directly** — commit → push → pull on server → deploy with `.env` →
 - [x] `docs/ROADMAP.md` (this file)
 - [x] `docs/DATABASE.md` (data model)
 - [x] `docs/BACKEND.md` (backend architecture)
-- [ ] Monorepo scaffold: pnpm workspaces + Turborepo, base `tsconfig`, eslint/prettier, `.gitignore`
-- [ ] `services/api` Fastify skeleton (env, prisma client, health, error handler, module layout)
-- [ ] `packages/shared` skeleton (shared TS types)
+- [x] Monorepo scaffold: pnpm workspaces + Turborepo, base `tsconfig`, eslint/prettier, `.gitignore`
+- [x] `services/api` Fastify skeleton (env, prisma client, health, error handler, module layout)
+- [x] `packages/shared` skeleton (shared TS types)
 
 ## Phase 1 — Core
 **Backend**
-- [ ] Prisma schema for all core entities (see `DATABASE.md`) + initial migration
-- [ ] Seed script: 3–5 pubs (coordinates), table inventories, a menu each, one upcoming event
+- [x] Prisma schema for all core entities (see `DATABASE.md`) + initial migration
+- [x] Seed script: 3–5 pubs (coordinates), table inventories, a menu each, one upcoming event
 - [ ] Auth: consumer phone + dummy OTP (real DB user), staff/manager email+password, JWT + refresh
 - [ ] Pubs: `GET nearest` (PostGIS), `GET detail`
 - [ ] Menu: `GET` categories + items for a pub

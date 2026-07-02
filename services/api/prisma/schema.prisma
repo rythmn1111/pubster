@@ -1,23 +1,287 @@
 // Pubster — Prisma schema.
 //
-// PHASE-1 SKELETON: datasource + generator + a single placeholder model so
-// `prisma validate` and `prisma generate` succeed. The full data model
-// (User, Pub, RestaurantTable, Reservation, Event, Menu*, Order*, Payment,
-// RefreshToken) is defined in docs/DATABASE.md and lands in a follow-up task,
-// together with the PostGIS `location` column and GiST index (raw migration).
+// THE data model per docs/DATABASE.md. Money is stored as integer cents with a
+// `currency` code (default "USD"); timestamps are UTC. Primary keys are uuid.
+// PostGIS powers the "nearest pubs" geo query: `Pub.location` is a
+// geography(Point,4326) column modelled via `Unsupported` and kept in sync with
+// latitude/longitude. Its GiST index is added in the raw migration (Prisma does
+// not emit indexes for Unsupported columns).
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
-/// Placeholder so the schema validates before the real model lands.
-/// Remove when the Phase-1 entities are added.
-model HealthCheck {
-  id        String   @id @default(uuid())
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  consumer
+  staff
+  manager
+  super_admin
+}
+
+enum ReservationStatus {
+  pending
+  confirmed
+  seated
+  completed
+  cancelled
+  no_show
+}
+
+enum EventStatus {
+  scheduled
+  cancelled
+  completed
+}
+
+enum OrderStatus {
+  pending
+  paid
+  preparing
+  ready
+  served
+  cancelled
+}
+
+enum PaymentKind {
+  event_cover
+  food_order
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  refunded
+  failed
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// One table for all humans; `role` distinguishes them. Consumers auth by phone
+/// + dummy OTP; staff/manager/super_admin by email + password (argon2 hash).
+model User {
+  id           String   @id @default(uuid())
+  role         UserRole
+  name         String?
+  phone        String?  @unique
+  email        String?  @unique
+  passwordHash String?
+  pubId        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  pub           Pub?           @relation(fields: [pubId], references: [id])
+  reservations  Reservation[]
+  orders        Order[]
+  payments      Payment[]
+  refreshTokens RefreshToken[]
+
+  @@index([pubId])
+}
+
+model Pub {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+
+  latitude  Float
+  longitude Float
+  /// PostGIS geography(Point,4326), kept in sync with lat/lng via raw SQL.
+  /// Nullable: populated after insert. GiST index added in raw migration.
+  location  Unsupported("geography(Point, 4326)")?
+
+  addressLine String?
+  city        String?
+  region      String?
+  postalCode  String?
+
+  phone        String?
+  photos       String[]
+  openingHours Json?
+  slotMinutes  Int      @default(90)
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tables         RestaurantTable[]
+  menuCategories MenuCategory[]
+  menuItems      MenuItem[]
+  events         Event[]
+  reservations   Reservation[]
+  orders         Order[]
+  staff          User[]
+
+  // GiST index on the PostGIS geography column. Declared here so Prisma's drift
+  // detection knows about it; the SQL is also written by hand in the init
+  // migration (Prisma emits no index DDL for `Unsupported` columns on migrate).
+  @@index([location], type: Gist)
+}
+
+/// Physical table inventory. One row per physical table. Reservations consume a
+/// table size class from the pool, not a specific row.
+model RestaurantTable {
+  id        String   @id @default(uuid())
+  pubId     String
+  seats     Int
+  label     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pub Pub @relation(fields: [pubId], references: [id], onDelete: Cascade)
+
+  @@index([pubId, seats])
+}
+
+model Reservation {
+  id         String            @id @default(uuid())
+  pubId      String
+  userId     String
+  partyCount Int
+  /// Size class consumed (smallest available >= partyCount).
+  seats      Int
+  startTime  DateTime
+  endTime    DateTime
+  status     ReservationStatus @default(pending)
+  eventId    String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  pub   Pub    @relation(fields: [pubId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
+  order Order?
+
+  @@index([pubId, startTime])
+  @@index([userId])
+  @@index([eventId])
+}
+
+model Event {
+  id               String      @id @default(uuid())
+  pubId            String
+  name             String
+  description      String?
+  startTime        DateTime
+  endTime          DateTime
+  /// Max attendees (sum of joined reservations' partyCount).
+  capacity         Int
+  /// Per-person cover charge, integer cents.
+  coverChargeCents Int
+  status           EventStatus @default(scheduled)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  pub          Pub           @relation(fields: [pubId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@index([pubId, startTime])
+}
+
+model MenuCategory {
+  id        String @id @default(uuid())
+  pubId     String
+  name      String
+  sortOrder Int    @default(0)
+
+  pub   Pub        @relation(fields: [pubId], references: [id], onDelete: Cascade)
+  items MenuItem[]
+
+  @@index([pubId, sortOrder])
+}
+
+model MenuItem {
+  id          String  @id @default(uuid())
+  pubId       String
+  categoryId  String
+  name        String
+  description String?
+  priceCents  Int
+  imageUrl    String?
+  isAvailable Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  pub        Pub          @relation(fields: [pubId], references: [id], onDelete: Cascade)
+  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([pubId, categoryId])
+}
+
+/// Pre-order placed against a reservation's slot.
+model Order {
+  id            String      @id @default(uuid())
+  reservationId String      @unique
+  userId        String
+  pubId         String
+  status        OrderStatus @default(pending)
+  totalCents    Int
+  currency      String      @default("USD")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+  pub         Pub         @relation(fields: [pubId], references: [id], onDelete: Cascade)
+  items       OrderItem[]
+
+  @@index([pubId, status])
+  @@index([reservationId])
+}
+
+model OrderItem {
+  id             String @id @default(uuid())
+  orderId        String
+  menuItemId     String
+  nameSnapshot   String
+  unitPriceCents Int
+  quantity       Int
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+}
+
+/// Stubbed for MVP (recorded as `paid`, no real money movement).
+model Payment {
+  id          String        @id @default(uuid())
+  userId      String
+  kind        PaymentKind
+  /// orderId or reservationId, depending on `kind`.
+  refId       String
+  amountCents Int
+  currency    String        @default("USD")
+  status      PaymentStatus @default(pending)
+  provider    String        @default("stub")
+  createdAt   DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([kind, refId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  /// Store the hash only, never the raw token.
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
