@@ -37,15 +37,23 @@ struct RootView: View {
 struct LaunchView: View {
     var body: some View {
         ZStack {
-            Color.pubsterAccent.opacity(0.08).ignoresSafeArea()
-            VStack(spacing: 16) {
-                Image(systemName: "mug.fill")
-                    .font(.system(size: 56))
-                    .foregroundStyle(Color.pubsterAccent)
+            ScreenBackground()
+            VStack(spacing: Spacing.lg) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient.pubAccentGradient)
+                        .frame(width: 88, height: 88)
+                        .softShadow(radius: 16, y: 8, opacity: 0.18)
+                    Image(systemName: "mug.fill")
+                        .font(.system(size: 40, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
                 Text("Pubster")
-                    .font(.largeTitle.bold())
+                    .font(.pubDisplay)
+                    .foregroundStyle(Color.pubEspresso)
                 ProgressView()
-                    .padding(.top, 8)
+                    .tint(.pubAccent)
+                    .padding(.top, Spacing.xs)
             }
         }
     }

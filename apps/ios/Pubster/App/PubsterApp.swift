@@ -10,7 +10,7 @@ struct PubsterApp: App {
             RootView()
                 .environmentObject(appState)
                 .environmentObject(locationManager)
-                .tint(.pubsterAccent)
+                .tint(.pubAccent)
         }
     }
 }
