@@ -11,37 +11,41 @@ struct DiscoverView: View {
 
     var body: some View {
         NavigationStack {
-            content
-                .navigationTitle("Nearby Pubs")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Menu {
-                            if let name = appState.currentUser?.name, !name.isEmpty {
-                                Text("Signed in as \(name)")
-                            }
-                            Button(role: .destructive) {
-                                appState.signOut()
-                            } label: {
-                                Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
-                            }
-                        } label: {
-                            Image(systemName: "person.crop.circle")
+            ZStack {
+                ScreenBackground()
+                content
+            }
+            .navigationTitle("Pubster")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        if let name = appState.currentUser?.name, !name.isEmpty {
+                            Text("Signed in as \(name)")
                         }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            showBookings = true
+                        Button(role: .destructive) {
+                            appState.signOut()
                         } label: {
-                            Label("My bookings", systemImage: "calendar")
+                            Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
                         }
+                    } label: {
+                        Image(systemName: "person.crop.circle")
                     }
                 }
-                .sheet(isPresented: $showBookings) {
-                    NavigationStack {
-                        MyBookingsView()
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showBookings = true
+                    } label: {
+                        Label("My bookings", systemImage: "calendar")
                     }
                 }
+            }
+            .sheet(isPresented: $showBookings) {
+                NavigationStack {
+                    MyBookingsView()
+                }
+            }
         }
         .task {
             locationManager.startIfAuthorized()
@@ -52,22 +56,20 @@ struct DiscoverView: View {
     @ViewBuilder
     private var content: some View {
         if vm.isLoading && vm.pubs.isEmpty {
-            ProgressView("Finding pubs…")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            LoadingStateView(message: "Finding pubs near you…")
         } else if let error = vm.errorMessage, vm.pubs.isEmpty {
-            ContentUnavailableView {
-                Label("Couldn't load pubs", systemImage: "wifi.exclamationmark")
-            } description: {
-                Text(error)
-            } actions: {
-                Button("Try again") { Task { await reload() } }
-                    .buttonStyle(.borderedProminent)
-            }
+            EmptyStateView(
+                icon: "wifi.exclamationmark",
+                title: "Couldn't load pubs",
+                message: error,
+                actionTitle: "Try again",
+                action: { Task { await reload() } }
+            )
         } else if vm.pubs.isEmpty {
-            ContentUnavailableView(
-                "No pubs nearby",
-                systemImage: "mappin.slash",
-                description: Text("We couldn't find any pubs around you right now.")
+            EmptyStateView(
+                icon: "mappin.slash",
+                title: "No pubs nearby",
+                message: "We couldn't find any pubs around you right now."
             )
         } else {
             list
@@ -75,38 +77,49 @@ struct DiscoverView: View {
     }
 
     private var list: some View {
-        List {
-            Section {
-                map
-                    .frame(height: 220)
-                    .listRowInsets(EdgeInsets())
-            }
-            Section("Sorted by distance") {
-                ForEach(vm.pubs) { pub in
-                    NavigationLink {
-                        PubDetailView(pubId: pub.id, pubName: pub.name)
-                    } label: {
-                        PubRow(pub: pub)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.lg) {
+                SectionHeader("Pubs near you", subtitle: "Sorted by distance")
+                    .padding(.top, Spacing.xs)
+
+                mapCard
+
+                LazyVStack(spacing: Spacing.md) {
+                    ForEach(vm.pubs) { pub in
+                        NavigationLink {
+                            PubDetailView(pubId: pub.id, pubName: pub.name)
+                        } label: {
+                            PubCard(pub: pub)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
+            .padding(.horizontal, Spacing.screen)
+            .padding(.bottom, Spacing.xxl)
         }
-        .listStyle(.insetGrouped)
         .refreshable { await reload() }
     }
 
-    private var map: some View {
+    private var mapCard: some View {
         Map(position: $cameraPosition) {
             UserAnnotation()
             ForEach(vm.pubs) { pub in
                 Marker(pub.name, systemImage: "mug.fill", coordinate:
                         CLLocationCoordinate2D(latitude: pub.latitude, longitude: pub.longitude))
-                    .tint(Color.pubsterAccent)
+                    .tint(Color.pubAccent)
             }
         }
         .mapControls {
             MapUserLocationButton()
         }
+        .frame(height: 200)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                .strokeBorder(Color.pubBorder, lineWidth: 1)
+        )
+        .softShadow()
     }
 
     private func reload() async {
@@ -120,32 +133,32 @@ struct DiscoverView: View {
     }
 }
 
-private struct PubRow: View {
+private struct PubCard: View {
     let pub: PubSummaryDTO
 
     var body: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.pubsterAccent.opacity(0.15))
-                .frame(width: 46, height: 46)
-                .overlay {
-                    Image(systemName: "mug.fill")
-                        .foregroundStyle(Color.pubsterAccent)
-                }
-            VStack(alignment: .leading, spacing: 3) {
-                Text(pub.name)
-                    .font(.headline)
-                    .lineLimit(1)
-                if !pub.shortAddress.isEmpty {
-                    Text(pub.shortAddress)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+        Card {
+            HStack(spacing: Spacing.md) {
+                PubThumbnail(size: 60)
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text(pub.name)
+                        .font(.pubHeadline)
+                        .foregroundStyle(Color.pubEspresso)
                         .lineLimit(1)
+                    if !pub.shortAddress.isEmpty {
+                        Text(pub.shortAddress)
+                            .font(.pubBody)
+                            .foregroundStyle(Color.pubTextSecondary)
+                            .lineLimit(1)
+                    }
+                    PillLabel(pub.distanceLabel, systemImage: "mappin")
+                        .padding(.top, 2)
                 }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.pubTextSecondary.opacity(0.6))
             }
-            Spacer()
-            PillLabel(pub.distanceLabel, systemImage: "location.fill")
         }
-        .padding(.vertical, 4)
     }
 }

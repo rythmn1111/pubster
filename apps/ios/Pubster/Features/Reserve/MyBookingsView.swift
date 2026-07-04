@@ -56,30 +56,13 @@ struct MyBookingsView: View {
     @StateObject private var vm = MyBookingsViewModel()
 
     var body: some View {
-        Group {
-            if vm.isLoading && vm.reservations.isEmpty {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = vm.errorMessage, vm.reservations.isEmpty {
-                ContentUnavailableView {
-                    Label("Couldn't load bookings", systemImage: "calendar.badge.exclamationmark")
-                } description: {
-                    Text(error)
-                } actions: {
-                    Button("Try again") { Task { await vm.load(api: appState.api) } }
-                        .buttonStyle(.borderedProminent)
-                }
-            } else if vm.reservations.isEmpty {
-                ContentUnavailableView(
-                    "No bookings yet",
-                    systemImage: "calendar",
-                    description: Text("Reserve a table and it'll show up here.")
-                )
-            } else {
-                list
-            }
+        ZStack {
+            ScreenBackground()
+            content
         }
         .navigationTitle("My Bookings")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { dismiss() }
@@ -88,30 +71,59 @@ struct MyBookingsView: View {
         .task { await vm.load(api: appState.api) }
     }
 
+    @ViewBuilder
+    private var content: some View {
+        if vm.isLoading && vm.reservations.isEmpty {
+            LoadingStateView(message: "Loading your bookings…")
+        } else if let error = vm.errorMessage, vm.reservations.isEmpty {
+            EmptyStateView(
+                icon: "calendar.badge.exclamationmark",
+                title: "Couldn't load bookings",
+                message: error,
+                actionTitle: "Try again",
+                action: { Task { await vm.load(api: appState.api) } }
+            )
+        } else if vm.reservations.isEmpty {
+            EmptyStateView(
+                icon: "calendar",
+                title: "No bookings yet",
+                message: "Reserve a table and it'll show up here."
+            )
+        } else {
+            list
+        }
+    }
+
     private var list: some View {
-        List {
-            if !vm.upcoming.isEmpty {
-                Section("Upcoming") {
-                    ForEach(vm.upcoming) { reservation in
-                        BookingRow(
-                            reservation: reservation,
-                            isCancelling: vm.cancellingIds.contains(reservation.id),
-                            canCancel: true
-                        ) {
-                            Task { await vm.cancel(api: appState.api, reservation: reservation) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
+                if !vm.upcoming.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        SectionHeader("Upcoming")
+                        ForEach(vm.upcoming) { reservation in
+                            BookingRow(
+                                reservation: reservation,
+                                isCancelling: vm.cancellingIds.contains(reservation.id),
+                                canCancel: true
+                            ) {
+                                Task { await vm.cancel(api: appState.api, reservation: reservation) }
+                            }
+                        }
+                    }
+                }
+                if !vm.past.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        SectionHeader("Past & cancelled")
+                        ForEach(vm.past) { reservation in
+                            BookingRow(reservation: reservation, isCancelling: false, canCancel: false, onCancel: {})
                         }
                     }
                 }
             }
-            if !vm.past.isEmpty {
-                Section("Past & cancelled") {
-                    ForEach(vm.past) { reservation in
-                        BookingRow(reservation: reservation, isCancelling: false, canCancel: false, onCancel: {})
-                    }
-                }
-            }
+            .padding(.horizontal, Spacing.screen)
+            .padding(.top, Spacing.md)
+            .padding(.bottom, Spacing.xxl)
         }
-        .listStyle(.insetGrouped)
         .refreshable { await vm.load(api: appState.api) }
     }
 }
@@ -123,38 +135,39 @@ private struct BookingRow: View {
     let onCancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(reservation.pubName ?? "Pub")
-                    .font(.headline)
-                Spacer()
-                StatusBadge(status: reservation.status)
-            }
-            Label(DateUtils.dateTimeLabel(fromISO: reservation.startTime), systemImage: "calendar")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            HStack(spacing: 8) {
-                PillLabel("Party of \(reservation.partyCount)", systemImage: "person.2.fill")
-                PillLabel("\(reservation.seats)-seat", systemImage: "chair.lounge.fill")
-                if reservation.eventId != nil {
-                    PillLabel("Event", systemImage: "ticket.fill")
+        Card {
+            VStack(alignment: .leading, spacing: Spacing.md) {
+                HStack(alignment: .top) {
+                    HStack(spacing: Spacing.md) {
+                        PubThumbnail(size: 44)
+                        Text(reservation.pubName ?? "Pub")
+                            .font(.pubHeadline)
+                            .foregroundStyle(Color.pubEspresso)
+                    }
+                    Spacer(minLength: Spacing.sm)
+                    StatusBadge(status: reservation.status)
                 }
-            }
-            if canCancel {
-                Button(role: .destructive) {
-                    onCancel()
-                } label: {
-                    if isCancelling {
-                        ProgressView()
-                    } else {
-                        Text("Cancel reservation")
+                Label(DateUtils.dateTimeLabel(fromISO: reservation.startTime), systemImage: "calendar")
+                    .font(.pubBody)
+                    .foregroundStyle(Color.pubTextSecondary)
+                HStack(spacing: Spacing.sm) {
+                    PillLabel("Party of \(reservation.partyCount)", systemImage: "person.2.fill")
+                    PillLabel("\(reservation.seats)-seat", systemImage: "chair.lounge.fill")
+                    if reservation.eventId != nil {
+                        PillLabel("Event", systemImage: "ticket.fill", tint: .pubGold)
                     }
                 }
-                .font(.subheadline)
-                .disabled(isCancelling)
+                if canCancel {
+                    Divider().overlay(Color.pubBorder)
+                    TextButton(isCancelling ? "Cancelling…" : "Cancel reservation",
+                               systemImage: "xmark.circle",
+                               role: .destructive) {
+                        onCancel()
+                    }
+                    .disabled(isCancelling)
+                }
             }
         }
-        .padding(.vertical, 4)
     }
 }
 
@@ -162,7 +175,7 @@ private struct StatusBadge: View {
     let status: ReservationStatus
 
     var body: some View {
-        PillLabel(label, tint: tint)
+        PillLabel(label, systemImage: icon, tint: tint)
     }
 
     private var label: String {
@@ -172,12 +185,21 @@ private struct StatusBadge: View {
         }
     }
 
+    private var icon: String {
+        switch status {
+        case .confirmed, .seated: return "checkmark.seal.fill"
+        case .completed: return "flag.checkered"
+        case .cancelled, .no_show: return "xmark.circle.fill"
+        case .pending: return "clock.fill"
+        }
+    }
+
     private var tint: Color {
         switch status {
-        case .confirmed, .seated: return .green
-        case .completed: return .blue
-        case .cancelled, .no_show: return .red
-        case .pending: return .orange
+        case .confirmed, .seated: return .pubSuccess
+        case .completed: return .pubAccent
+        case .cancelled, .no_show: return .pubError
+        case .pending: return .pubGold
         }
     }
 }

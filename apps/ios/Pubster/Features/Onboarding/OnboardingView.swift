@@ -7,22 +7,29 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            Color.pubsterAccent.opacity(0.06).ignoresSafeArea()
+            ScreenBackground()
             ScrollView {
-                VStack(spacing: 28) {
-                    switch vm.step {
-                    case .phone:
-                        phoneStep
-                    case .otp:
-                        otpStep
-                    case .name:
-                        nameStep
-                    case .location:
-                        locationStep
+                VStack(spacing: Spacing.xxl) {
+                    Group {
+                        switch vm.step {
+                        case .phone:
+                            phoneStep
+                        case .otp:
+                            otpStep
+                        case .name:
+                            nameStep
+                        case .location:
+                            locationStep
+                        }
                     }
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
                 }
-                .padding(24)
+                .padding(Spacing.xxl)
                 .frame(maxWidth: 520)
+                .frame(maxWidth: .infinity)
             }
         }
         .animation(.easeInOut, value: vm.step)
@@ -31,75 +38,60 @@ struct OnboardingView: View {
     // MARK: - Steps
 
     private var phoneStep: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: Spacing.xxl) {
             header(
                 icon: "mug.fill",
                 title: "Welcome to Pubster",
                 subtitle: "Discover the best pubs and events happening near you."
             )
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Phone number")
-                    .font(.subheadline.weight(.semibold))
+            LabeledField(label: "Phone number") {
                 TextField("+1 555 123 4567", text: $vm.phone)
                     .keyboardType(.phonePad)
                     .textContentType(.telephoneNumber)
-                    .modifier(FieldStyle())
             }
             errorText
             PrimaryButton(title: "Send code", isLoading: vm.isSubmitting) {
                 Task { await vm.sendCode(api: appState.api) }
             }
-            Text("We'll text you a verification code.\nDummy mode: any number works with code 000000.")
-                .font(.footnote)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+            hint("We'll text you a verification code.\nDummy mode: any number works with code 000000.")
         }
     }
 
     private var otpStep: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: Spacing.xxl) {
             header(
                 icon: "lock.shield.fill",
                 title: "Enter your code",
                 subtitle: "Sent to \(vm.normalizedPhone)"
             )
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Verification code")
-                    .font(.subheadline.weight(.semibold))
+            LabeledField(label: "Verification code") {
                 TextField("000000", text: $vm.code)
                     .keyboardType(.numberPad)
                     .textContentType(.oneTimeCode)
-                    .font(.title2.monospacedDigit())
-                    .modifier(FieldStyle())
+                    .font(.system(size: 22, weight: .semibold, design: .rounded).monospacedDigit())
             }
             errorText
             PrimaryButton(title: "Verify", isLoading: vm.isSubmitting) {
                 Task { await vm.verify(api: appState.api) }
             }
-            Button("Change phone number") {
+            TextButton("Change phone number") {
                 vm.step = .phone
                 vm.errorMessage = nil
             }
-            .font(.footnote)
-            Text("Dummy OTP is 000000.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            hint("Dummy OTP is 000000.")
         }
     }
 
     private var nameStep: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: Spacing.xxl) {
             header(
                 icon: "person.crop.circle.fill",
                 title: "What's your name?",
                 subtitle: "So pubs know who's booking."
             )
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Name")
-                    .font(.subheadline.weight(.semibold))
+            LabeledField(label: "Name") {
                 TextField("Jane Doe", text: $vm.name)
                     .textContentType(.name)
-                    .modifier(FieldStyle())
             }
             errorText
             PrimaryButton(title: "Continue", isLoading: vm.isSubmitting) {
@@ -109,20 +101,19 @@ struct OnboardingView: View {
     }
 
     private var locationStep: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: Spacing.xxl) {
             header(
                 icon: "location.circle.fill",
                 title: "Find pubs near you",
                 subtitle: "Pubster uses your location to show the nearest pubs and sort them by distance."
             )
             errorText
-            PrimaryButton(title: "Allow location access", isLoading: false) {
+            PrimaryButton(title: "Allow location access") {
                 locationManager.requestPermission()
             }
-            Button("Maybe later") {
+            TextButton("Maybe later") {
                 finish()
             }
-            .font(.subheadline.weight(.semibold))
         }
         .onChange(of: locationManager.authorizationStatus) { _, status in
             if status != .notDetermined {
@@ -142,64 +133,42 @@ struct OnboardingView: View {
     // MARK: - Building blocks
 
     private func header(icon: String, title: String, subtitle: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 52))
-                .foregroundStyle(Color.pubsterAccent)
-                .padding(.top, 32)
+        VStack(spacing: Spacing.lg) {
+            ZStack {
+                Circle()
+                    .fill(LinearGradient.pubAccentGradient)
+                    .frame(width: 56, height: 56)
+                    .softShadow(radius: 12, y: 6, opacity: 0.18)
+                Image(systemName: icon)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .padding(.top, Spacing.xxl)
             Text(title)
-                .font(.title.bold())
+                .font(.pubTitle)
+                .foregroundStyle(Color.pubEspresso)
                 .multilineTextAlignment(.center)
             Text(subtitle)
-                .font(.body)
+                .font(.pubBody)
+                .foregroundStyle(Color.pubTextSecondary)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
         }
+    }
+
+    private func hint(_ text: String) -> some View {
+        Text(text)
+            .font(.pubCaption)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(Color.pubTextSecondary.opacity(0.85))
     }
 
     @ViewBuilder
     private var errorText: some View {
         if let message = vm.errorMessage {
             Text(message)
-                .font(.footnote)
-                .foregroundStyle(.red)
+                .font(.pubCaption)
+                .foregroundStyle(Color.pubError)
                 .multilineTextAlignment(.center)
         }
-    }
-}
-
-/// Rounded, filled text field style used across onboarding.
-private struct FieldStyle: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .padding(14)
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-            .autocorrectionDisabled()
-    }
-}
-
-/// Full-width primary action button with an inline loading state.
-struct PrimaryButton: View {
-    let title: String
-    var isLoading: Bool = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Text(title)
-                    .opacity(isLoading ? 0 : 1)
-                if isLoading {
-                    ProgressView()
-                        .tint(.white)
-                }
-            }
-            .font(.headline)
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(Color.pubsterAccent, in: RoundedRectangle(cornerRadius: 12))
-        }
-        .disabled(isLoading)
     }
 }

@@ -8,10 +8,13 @@ struct ReserveView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm = ReserveViewModel()
 
-    @State private var pendingSlot: AvailabilitySlotDTO?
+    @State private var selectedSlot: AvailabilitySlotDTO?
+
+    private let columns = [GridItem(.adaptive(minimum: 96), spacing: Spacing.sm)]
 
     var body: some View {
-        Group {
+        ZStack {
+            ScreenBackground()
             if let confirmation = vm.confirmation {
                 ConfirmationView(reservation: confirmation, pubName: pub.name) {
                     dismiss()
@@ -22,6 +25,7 @@ struct ReserveView: View {
         }
         .navigationTitle("Reserve")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             if vm.confirmation == nil {
                 ToolbarItem(placement: .cancellationAction) {
@@ -29,132 +33,170 @@ struct ReserveView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            if vm.confirmation == nil, let slot = selectedSlot {
+                confirmBar(for: slot)
+            }
+        }
     }
 
     private var form: some View {
-        Form {
-            Section("When") {
-                DatePicker(
-                    "Date",
-                    selection: $vm.date,
-                    in: Date()...,
-                    displayedComponents: .date
-                )
-                Stepper("Party of \(vm.partyCount)", value: $vm.partyCount, in: 1...20)
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
+                SectionHeader("Book a table", subtitle: "at \(pub.name)")
+                    .padding(.top, Spacing.xs)
 
-            Section {
-                Button {
-                    Task { await vm.loadAvailability(api: appState.api, pubId: pub.id) }
-                } label: {
-                    HStack {
-                        Text("Check availability")
-                        Spacer()
-                        if vm.isLoadingSlots { ProgressView() }
+                Card {
+                    VStack(alignment: .leading, spacing: Spacing.lg) {
+                        HStack {
+                            Label("Date", systemImage: "calendar")
+                                .font(.pubLabel)
+                                .foregroundStyle(Color.pubTextPrimary)
+                            Spacer()
+                            DatePicker("", selection: $vm.date, in: Date()..., displayedComponents: .date)
+                                .labelsHidden()
+                                .tint(.pubAccent)
+                        }
+                        Divider().overlay(Color.pubBorder)
+                        VStack(spacing: Spacing.sm) {
+                            Text("PARTY SIZE")
+                                .font(.pubCaption)
+                                .tracking(0.6)
+                                .foregroundStyle(Color.pubTextSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            PartyStepper(count: $vm.partyCount)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                 }
-                .disabled(vm.isLoadingSlots)
-            }
 
-            if !events.isEmpty {
-                eventsSection
-            }
+                SecondaryButton(title: "Find available tables",
+                                systemImage: "magnifyingglass",
+                                isLoading: vm.isLoadingSlots) {
+                    selectedSlot = nil
+                    Task { await vm.loadAvailability(api: appState.api, pubId: pub.id) }
+                }
 
-            if let error = vm.errorMessage {
-                Section {
-                    Text(error).foregroundStyle(.red).font(.subheadline)
+                if !events.isEmpty {
+                    eventsSection
+                }
+
+                if let error = vm.errorMessage {
+                    Text(error)
+                        .font(.pubBody)
+                        .foregroundStyle(Color.pubError)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if vm.hasSearched && !vm.isLoadingSlots {
+                    slotsSection
                 }
             }
-
-            if vm.hasSearched && !vm.isLoadingSlots {
-                slotsSection
-            }
-        }
-        .confirmationDialog(
-            "Confirm reservation",
-            isPresented: Binding(
-                get: { pendingSlot != nil },
-                set: { if !$0 { pendingSlot = nil } }
-            ),
-            titleVisibility: .visible,
-            presenting: pendingSlot
-        ) { slot in
-            Button("Book \(DateUtils.timeLabel(fromISO: slot.startTime)) for \(vm.partyCount)") {
-                Task {
-                    await vm.book(api: appState.api, pubId: pub.id, slot: slot, events: events)
-                    pendingSlot = nil
-                }
-            }
-            Button("Cancel", role: .cancel) { pendingSlot = nil }
-        } message: { slot in
-            Text(summaryMessage(for: slot))
+            .padding(.horizontal, Spacing.screen)
+            .padding(.bottom, Spacing.xxl)
         }
     }
 
     private var eventsSection: some View {
-        Section("Join an event (optional)") {
-            ForEach(events) { event in
-                Button {
-                    if vm.joinEventId == event.id {
-                        vm.joinEventId = nil
-                    } else {
-                        vm.joinEventId = event.id
-                    }
-                } label: {
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(event.name).font(.body.weight(.semibold))
-                            Text(DateUtils.dateTimeLabel(fromISO: event.startTime))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(event.coverChargeCents > 0
-                                 ? "\(Money.format(cents: event.coverChargeCents)) per person cover"
-                                 : "Free entry")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            SectionHeader("Join an event", subtitle: "Optional")
+            VStack(spacing: Spacing.sm) {
+                ForEach(events) { event in
+                    let selected = vm.joinEventId == event.id
+                    Button {
+                        vm.joinEventId = selected ? nil : event.id
+                    } label: {
+                        HStack(alignment: .top, spacing: Spacing.md) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(event.name)
+                                    .font(.pubBodyEmphasis)
+                                    .foregroundStyle(Color.pubTextPrimary)
+                                Text(DateUtils.dateTimeLabel(fromISO: event.startTime))
+                                    .font(.pubCaption)
+                                    .foregroundStyle(Color.pubTextSecondary)
+                                Text(event.coverChargeCents > 0
+                                     ? "\(Money.format(cents: event.coverChargeCents)) per person cover"
+                                     : "Free entry")
+                                    .font(.pubCaption)
+                                    .foregroundStyle(Color.pubTextSecondary)
+                            }
+                            Spacer(minLength: Spacing.sm)
+                            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 22))
+                                .foregroundStyle(selected ? Color.pubAccent : Color.pubTextSecondary.opacity(0.5))
                         }
-                        Spacer()
-                        Image(systemName: vm.joinEventId == event.id ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(vm.joinEventId == event.id ? Color.pubsterAccent : Color.secondary)
+                        .padding(Spacing.lg)
+                        .background(
+                            RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                                .fill(Color.pubSurface)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                                .strokeBorder(selected ? Color.pubAccent : Color.pubBorder,
+                                              lineWidth: selected ? 1.5 : 1)
+                        )
                     }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }
 
     @ViewBuilder
     private var slotsSection: some View {
-        if vm.availableSlots.isEmpty {
-            Section("Available times") {
-                Text("No tables available for this date and party size. Try another day or a smaller party.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        } else {
-            Section("Available times") {
-                ForEach(vm.availableSlots) { slot in
-                    Button {
-                        pendingSlot = slot
-                    } label: {
-                        HStack {
-                            Text(DateUtils.timeLabel(fromISO: slot.startTime))
-                                .font(.body.weight(.medium))
-                            if let seats = slot.seats {
-                                PillLabel("\(seats)-seat", systemImage: "chair.lounge.fill")
-                            }
-                            Spacer()
-                            if joinsEvent(for: slot) {
-                                PillLabel("Event", systemImage: "ticket.fill")
-                            }
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            SectionHeader("Available times")
+            if vm.availableSlots.isEmpty {
+                Card {
+                    Text("No tables available for this date and party size. Try another day or a smaller party.")
+                        .font(.pubBody)
+                        .foregroundStyle(Color.pubTextSecondary)
+                }
+            } else {
+                LazyVGrid(columns: columns, spacing: Spacing.sm) {
+                    ForEach(vm.slots) { slot in
+                        SlotChip(
+                            title: DateUtils.timeLabel(fromISO: slot.startTime),
+                            subtitle: slot.seats.map { "\($0) seats" },
+                            state: chipState(for: slot)
+                        ) {
+                            selectedSlot = slot
                         }
                     }
                 }
             }
         }
+    }
+
+    private func chipState(for slot: AvailabilitySlotDTO) -> SlotChip.ChipState {
+        if !slot.available { return .unavailable }
+        return selectedSlot?.id == slot.id ? .selected : .available
+    }
+
+    private func confirmBar(for slot: AvailabilitySlotDTO) -> some View {
+        VStack(spacing: Spacing.sm) {
+            VStack(spacing: 2) {
+                Text("\(DateUtils.timeLabel(fromISO: slot.startTime)) · Party of \(vm.partyCount)")
+                    .font(.pubBodyEmphasis)
+                    .foregroundStyle(Color.pubTextPrimary)
+                Text(costSummary(for: slot))
+                    .font(.pubCaption)
+                    .foregroundStyle(Color.pubTextSecondary)
+            }
+            PrimaryButton(title: "Confirm reservation", systemImage: "checkmark", isLoading: vm.isBooking) {
+                Task {
+                    await vm.book(api: appState.api, pubId: pub.id, slot: slot, events: events)
+                }
+            }
+        }
+        .padding(.horizontal, Spacing.screen)
+        .padding(.top, Spacing.md)
+        .padding(.bottom, Spacing.sm)
+        .background(
+            Color.pubSurface
+                .overlay(Rectangle().frame(height: 1).foregroundStyle(Color.pubBorder), alignment: .top)
+                .ignoresSafeArea(edges: .bottom)
+        )
     }
 
     private func joinsEvent(for slot: AvailabilitySlotDTO) -> Bool {
@@ -162,56 +204,86 @@ struct ReserveView: View {
         return vm.event(event, overlaps: slot)
     }
 
-    private func summaryMessage(for slot: AvailabilitySlotDTO) -> String {
-        var lines = [
-            "\(pub.name)",
-            "\(DateUtils.dateTimeLabel(fromISO: slot.startTime)) · party of \(vm.partyCount)",
-        ]
+    private func costSummary(for slot: AvailabilitySlotDTO) -> String {
         if joinsEvent(for: slot),
            let id = vm.joinEventId,
            let event = events.first(where: { $0.id == id }) {
             let cover = event.coverChargeCents * vm.partyCount
-            lines.append("Joining \(event.name) — \(Money.format(cents: cover)) cover (billed at the pub)")
-        } else {
-            lines.append("Table reservation — free")
+            return "Joining \(event.name) — \(Money.format(cents: cover)) cover at the pub"
         }
-        return lines.joined(separator: "\n")
+        return "Table reservation — free"
     }
 }
 
-/// Post-booking confirmation.
+/// Post-booking confirmation — celebratory.
 private struct ConfirmationView: View {
     let reservation: ReservationDTO
     let pubName: String
     let onDone: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: Spacing.xl) {
             Spacer()
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(.green)
-            Text("You're booked!")
-                .font(.title.bold())
+            ZStack {
+                Circle()
+                    .fill(LinearGradient.pubAccentGradient)
+                    .frame(width: 104, height: 104)
+                    .softShadow(radius: 18, y: 8, opacity: 0.20)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 46, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            VStack(spacing: Spacing.xs) {
+                Text("Table booked!")
+                    .font(.pubDisplay)
+                    .foregroundStyle(Color.pubEspresso)
+                Text("We've saved your spot.")
+                    .font(.pubBody)
+                    .foregroundStyle(Color.pubTextSecondary)
+            }
 
-            VStack(spacing: 8) {
-                Text(reservation.pubName ?? pubName)
-                    .font(.headline)
-                Text(DateUtils.dateTimeLabel(fromISO: reservation.startTime))
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 8) {
-                    PillLabel("Party of \(reservation.partyCount)", systemImage: "person.2.fill")
-                    PillLabel("\(reservation.seats)-seat table", systemImage: "chair.lounge.fill")
-                    PillLabel(reservation.status.rawValue.capitalized, systemImage: "checkmark.seal.fill", tint: .green)
+            Card {
+                VStack(spacing: Spacing.md) {
+                    SummaryRow(label: "Pub", value: reservation.pubName ?? pubName)
+                    Divider().overlay(Color.pubBorder)
+                    SummaryRow(label: "When", value: DateUtils.dateTimeLabel(fromISO: reservation.startTime))
+                    Divider().overlay(Color.pubBorder)
+                    SummaryRow(label: "Party", value: "\(reservation.partyCount) guest\(reservation.partyCount == 1 ? "" : "s")")
+                    Divider().overlay(Color.pubBorder)
+                    SummaryRow(label: "Table", value: "\(reservation.seats) seats")
+                    Divider().overlay(Color.pubBorder)
+                    HStack {
+                        Text("Status")
+                            .font(.pubLabel)
+                            .foregroundStyle(Color.pubTextSecondary)
+                        Spacer()
+                        PillLabel(reservation.status.rawValue.capitalized,
+                                  systemImage: "checkmark.seal.fill", tint: .pubSuccess)
+                    }
                 }
             }
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
 
             Spacer()
             PrimaryButton(title: "Done", action: onDone)
         }
-        .padding(24)
+        .padding(Spacing.xxl)
+    }
+}
+
+private struct SummaryRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .font(.pubLabel)
+                .foregroundStyle(Color.pubTextSecondary)
+            Spacer(minLength: Spacing.lg)
+            Text(value)
+                .font(.pubBodyEmphasis)
+                .foregroundStyle(Color.pubTextPrimary)
+                .multilineTextAlignment(.trailing)
+        }
     }
 }
