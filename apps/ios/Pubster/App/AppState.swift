@@ -26,6 +26,13 @@ final class AppState: ObservableObject {
     /// Decide the initial screen. If we hold tokens, validate them via
     /// `/auth/me`; otherwise go straight to onboarding.
     func bootstrap() async {
+        // Hidden debug launch arg: jump straight to the main app, bypassing
+        // onboarding/auth. Used only for offline screenshot capture — no effect
+        // on normal launches.
+        if ProcessInfo.processInfo.arguments.contains("-previewMain") {
+            phase = .main
+            return
+        }
         guard tokenStore.hasTokens else {
             phase = .onboarding
             return

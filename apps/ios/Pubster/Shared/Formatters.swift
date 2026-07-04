@@ -9,6 +9,19 @@ enum Money {
         return formatter.string(from: NSNumber(value: Double(cents) / 100.0))
             ?? "$\(String(format: "%.2f", Double(cents) / 100.0))"
     }
+
+    /// Compact, locale-stable price for the vibrant Discover UI: "$10", "$12.50",
+    /// "Free". Uses en_US so hero/carousel labels stay clean regardless of the
+    /// device region.
+    static func compact(cents: Int) -> String {
+        guard cents > 0 else { return "Free" }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.maximumFractionDigits = cents % 100 == 0 ? 0 : 2
+        return formatter.string(from: NSNumber(value: Double(cents) / 100.0))
+            ?? "$\(cents / 100)"
+    }
 }
 
 /// Date parsing/formatting helpers.
