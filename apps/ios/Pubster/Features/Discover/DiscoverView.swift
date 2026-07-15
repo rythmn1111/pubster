@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 struct DiscoverView: View {
     @EnvironmentObject private var appState: AppState
@@ -44,7 +45,12 @@ struct DiscoverView: View {
             }
         }
         .task {
-            if vm.featuredEvents.isEmpty { await vm.loadMock() }
+            if vm.featuredEvents.isEmpty && vm.pubs.isEmpty {
+                await vm.loadFromAPI(
+                    api: appState.api,
+                    coordinate: CLLocationCoordinate2D(latitude: 42.3601, longitude: -71.0589)
+                )
+            }
             if autoOpenEventDetail, !didAutoOpenDetail, let first = vm.featuredEvents.first {
                 didAutoOpenDetail = true
                 path.append(DiscoverRoute.event(first.id))

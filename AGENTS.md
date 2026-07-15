@@ -1,12 +1,55 @@
 # AGENTS.md — Pubster: Status, Progress & Handoff
 
-**Last updated:** 2026-07-02
-**Branch:** `phase-1-foundation` (HEAD `7ead990`) · **Local only — not pushed, not deployed**
+**Last updated:** 2026-07-15
 **Companion docs:** `CLAUDE.md` (source-of-truth spec + golden rules), `docs/ROADMAP.md` (checklist),
 `docs/DATABASE.md`, `docs/BACKEND.md`, `docs/LOCAL_DEV.md`.
 
 This file is a plain-language, detailed snapshot of *what we're building, what is finished, what we're
 doing right now, and what comes next* — so anyone (human or agent) can pick up with full context.
+
+---
+
+## 0. ⭐ LATEST STATE (read this first — resume here)
+
+**Backend is DEPLOYED and LIVE on the VPS.** Phase-1 API runs under PM2 as `pubster-api` on
+`http://147.93.169.15:4000` (PostgreSQL + PostGIS, seeded: 4 Boston pubs, events, staff accounts).
+Reachable from the public internet; verified end-to-end. The whole Phase-1 backend + web dashboard +
+original iOS app are merged into `phase-1-foundation` and pushed to GitHub (`main` also updated).
+
+**iOS app now WORKS end-to-end against the live VPS** (onboarding w/ OTP `000000` → Discover with real
+pubs + events carousel → pub detail → reserve). It's on the **"Sunset" design** (vibrant orange, full
+light+dark, events-first) with **real data wired in**.
+
+**Design journey / decision pending:**
+- Warm-pub look (amber + serif) — ❌ rejected by user.
+- **Sunset** (orange `#EA6113/#F88F22/#FBB931/#FFE3B3`, light+dark, events carousel) — ✅ current, liked.
+  Only **Discover + EventDetail** got the Sunset restyle; onboarding/pub-detail/reserve/bookings still use
+  the old layout (they inherit the orange tint).
+- **Uber-Eats-style layout** — user REQUESTED it; the build agent stalled on an infra timeout before
+  writing code. **NOT built.** See task #13.
+
+**⚠️ THE OPEN FORK (ask the user before proceeding):** keep polishing **Sunset** across all screens, OR
+**retry the Uber-Eats layout**? This decision drives most remaining UI work.
+
+**Open PRs on GitHub (`rythmn1111/pubster`) — nothing merged yet:**
+- PR #1 `ui-redesign` → `phase-1-foundation` — warm-pub look (**rejected; can close**).
+- PR #2 `redesign-events-home` → `phase-1-foundation` — Sunset redesign (mock data).
+- PR #3 `wire-live-vps-data` → `redesign-events-home` — live VPS data (makes the app functional). Stacks on
+  #2; retarget to `phase-1-foundation` after #2 merges.
+
+**Cleanup debts before shipping:** remove iOS debug launch flags (`-previewMain`, `-openEventDetail`);
+tighten the dev-only `NSAllowsArbitraryLoads` ATS (or move backend to HTTPS); fix Keychain access for
+unsigned simulator builds (add `keychain-access-groups` entitlement / ad-hoc signing) — currently the app
+is run as an ad-hoc-signed build so tokens persist. **Web dashboard is built but NOT deployed** (only the
+API is). To point the iOS build at the VPS, build with `API_BASE_URL='http://147.93.169.15:4000/api/v1'`.
+
+**VPS deploy specifics:** repo cloned at `/root/pubster` (deployed from `main`); prod `.env` at
+`services/api/.env` (untracked, secrets generated on server); Postgres role `pubster` / db `pubster`;
+PM2 app `pubster-api` (`pm2 save`d). Server is shared (~18 other apps) — port 4000 is ours; NEVER
+hand-edit on the VPS (commit → push → pull → deploy; see §2).
+
+**Next major work (unstarted):** Phase 2 (event cover charges + join, food pre-order, stubbed payments)
+and Phase 3 (manager metrics, push notifications). See §5/§10.
 
 ---
 

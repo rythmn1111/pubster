@@ -39,14 +39,34 @@ final class DiscoverViewModel: ObservableObject {
         do {
             // Wide radius so seeded pubs surface regardless of the simulator's
             // exact location; server returns them sorted by distance.
-            let result = try await api.nearestPubs(
+            let nearby = try await api.nearestPubs(
                 lat: coordinate.latitude,
                 lng: coordinate.longitude,
                 radius: 50_000,
                 limit: 50
             )
-            pubs = result.sorted { $0.distanceMeters < $1.distanceMeters }
-            // TODO: fetch events per pub and build `featuredEvents` from them.
+            let sortedPubs = nearby.sorted { $0.distanceMeters < $1.distanceMeters }
+            pubs = sortedPubs
+
+            // Build the featured-events carousel from the nearest pubs' upcoming events.
+            var collected: [FeaturedEvent] = []
+            for pub in sortedPubs.prefix(8) {
+                guard let events = try? await api.events(pubId: pub.id) else { continue }
+                for event in events {
+                    collected.append(
+                        FeaturedEvent(id: event.id, event: event, pub: pub, gradientIndex: 0)
+                    )
+                }
+            }
+            featuredEvents = collected
+                .sorted { $0.event.startTime < $1.event.startTime }
+                .enumerated()
+                .map {
+                    FeaturedEvent(
+                        id: $0.element.id, event: $0.element.event,
+                        pub: $0.element.pub, gradientIndex: $0.offset
+                    )
+                }
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
